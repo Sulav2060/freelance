@@ -66,7 +66,9 @@ const History: React.FC = () => {
           </Grid>
         ))}
       </Grid>
-      delete file details after payment complete from admin
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+        Note: File details are deleted after payment is completed by admin.
+      </Typography>
     </Box>
   );
 };

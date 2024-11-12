@@ -6,6 +6,7 @@ import WorkIcon from '@mui/icons-material/Work';
 import PaymentIcon from '@mui/icons-material/Payment';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import ClockIcon from '@mui/icons-material/AccessTime';
 
 const freelancerMenuItems = [
   { text: 'Dashboard', icon: <DashboardIcon /> },
@@ -13,7 +14,7 @@ const freelancerMenuItems = [
   { text: 'Work Now', icon: <WorkIcon /> },
   { text: 'Submitted Bids', icon: <SupportAgentIcon /> },
   { text: 'Payment', icon: <PaymentIcon /> },
-  { text: 'History', icon: <SupportAgentIcon /> },
+  { text: 'History', icon: <ClockIcon /> },
 ];
 
 const clientMenuItems = [
@@ -23,10 +24,27 @@ const clientMenuItems = [
   { text: 'Assigned Jobs', icon: <SupportAgentIcon /> },
   { text: 'Payment', icon: <PaymentIcon /> },
   { text: 'Support', icon: <SupportAgentIcon /> },
+  { text: 'History', icon: <ClockIcon /> },
 ];
 
-const Sidebar: React.FC<{ isFreelancer: boolean }> = ({ isFreelancer }) => {
-  const menuItems = isFreelancer ? freelancerMenuItems : clientMenuItems;
+const adminMenuItems = [
+  { text: 'Admin Dashboard', icon: <DashboardIcon /> },
+  { text: 'Account Management', icon: <AccountCircleIcon /> },
+  { text: 'Job Oversight', icon: <WorkIcon /> },
+];
+
+interface SidebarProps {
+  userRole: 'freelancer' | 'client' | 'admin';
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ userRole }) => {
+  // Select the menu items based on the role
+  const menuItems =
+    userRole === 'freelancer'
+      ? freelancerMenuItems
+      : userRole === 'client'
+      ? clientMenuItems
+      : adminMenuItems;
 
   return (
     <Drawer
@@ -48,7 +66,7 @@ const Sidebar: React.FC<{ isFreelancer: boolean }> = ({ isFreelancer }) => {
             key={text}
             button
             component={Link as React.ElementType}
-            to={`/${isFreelancer ? 'freelancer' : 'client'}/${text.toLowerCase().replace(/\s+/g, '')}`}
+            to={`/${userRole}/${text.toLowerCase().replace(/\s+/g, '')}`}
           >
             <ListItemIcon>{icon}</ListItemIcon>
             <ListItemText primary={text} />
@@ -64,7 +82,7 @@ const Sidebar: React.FC<{ isFreelancer: boolean }> = ({ isFreelancer }) => {
           <ListItem
             button
             component={Link as React.ElementType}
-            to={`/${isFreelancer ? 'freelancer' : 'client'}/profile`}
+            to={`/${userRole}/profile`}
           >
             <ListItemIcon>
               <AccountCircleIcon />

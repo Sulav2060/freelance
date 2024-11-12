@@ -1,146 +1,158 @@
-import React, { useState } from 'react';
-import { Box, Typography, Card, CardContent, Grid, Button } from '@mui/material';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, updateJobStatus } from '../store';
+import { Card, CardContent, Typography, Box, Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { CloudDownload, Check, Edit } from '@mui/icons-material';
 
-interface AssignedJob {
-  jobId: number;
-  bid: {
-    freelancer: string;
-    amount: number;
-  };
-  deadline: string; // Deadline for delivery
-  fileReceived?: string; // Name or path to the received file
-  sentForEdit?: boolean; // Flag to indicate if the job is sent for edit
+interface Job {
+  id: number;
+  sector: string;
+  details: string;
+  deadline: string;
+  status: 'not_received' | 'received' | 'accepted' | 'sent_for_edit';
+  fileUrl?: string;
 }
 
 const AssignedJobs: React.FC = () => {
-  const location = useLocation();
-  const { jobAccepted } = location.state || {};
+  const dispatch = useDispatch();
+  const assignedJobs = useSelector((state: RootState) => state.assignedJobs);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
-  // State to track which job has been viewed
-  const [viewedFiles, setViewedFiles] = useState<number[]>([]);
+  const calculateTimeLeft = (deadline: string) => {
+    const difference = +new Date(deadline) - +new Date();
+    let timeLeft = {};
 
-  // Dummy data for assigned jobs
-  const jobs: AssignedJob[] = [
-    {
-      jobId: 1,
-      bid: { freelancer: 'Freelancer A', amount: 300 },
-      deadline: '2024-11-01',
-      fileReceived: undefined, // No file received yet
-      sentForEdit: false,
-    },
-    {
-      jobId: 2,
-      bid: { freelancer: 'Freelancer B', amount: 450 },
-      deadline: '2024-10-25',
-      fileReceived: 'file2.pdf', // File received
-      sentForEdit: false,
-    },
-    {
-      jobId: 3,
-      bid: { freelancer: 'Freelancer C', amount: 500 },
-      deadline: '2024-10-30',
-      fileReceived: undefined,
-      sentForEdit: true, // Sent for edit
-    },
-  ];
+    if (difference > 0) {
+      timeLeft = {
+        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((difference / 1000 / 60) % 60),
+        seconds: Math.floor((difference / 1000) % 60),
+      };
+    }
 
-  const handleViewFile = (jobId: number) => {
-    // Logic to view the received file
-    setViewedFiles((prev) => [...prev, jobId]);
-    console.log(`Viewing file for Job ID: ${jobId}`);
+    return timeLeft;
   };
 
-  const handleReleasePayment = (jobId: number) => {
-    // Logic to release payment
-    console.log(`Payment released for Job ID: ${jobId}`);
+  const [timeLeft, setTimeLeft] = useState<{ [key: string]: any }>({});
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const updatedTimeLeft: { [key: string]: any } = {};
+      assignedJobs.forEach((job) => {
+        if (job.status === 'not_received') {
+          updatedTimeLeft[job.id] = calculateTimeLeft(job.deadline);
+        }
+      });
+      setTimeLeft(updatedTimeLeft);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [assignedJobs]);
+
+  const handleViewFile = (job: Job) => {
+    setSelectedJob(job);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedJob(null);
+  };
+
+  const handleAcceptJob = (jobId: number) => {
+    dispatch(updateJobStatus({ jobId, status: 'accepted' }));
   };
 
   const handleSendForEdit = (jobId: number) => {
-    // Logic to send job for edit
-    console.log(`Job ID: ${jobId} sent for edit.`);
+    dispatch(updateJobStatus({ jobId, status: 'sent_for_edit' }));
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'not_received':
+        return 'error';
+      case 'received':
+        return 'warning';
+      case 'accepted':
+        return 'success';
+      case 'sent_for_edit':
+        return 'info';
+      default:
+        return 'default';
+    }
   };
 
   return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h5" align="center" gutterBottom>
-        Assigned Jobs
-      </Typography>
-      {jobAccepted && (
-        <Typography variant="h6" color="success.main" align="center" gutterBottom>
-          Job Accepted!
-        </Typography>
-      )}
-      
-      {jobs.length === 0 ? (
-        <Typography align="center">No assigned jobs.</Typography>
-      ) : (
-        <Grid container spacing={2}>
-          {jobs.map((job, index) => (
-            <Grid item xs={12} key={index}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6">Job ID: {job.jobId}</Typography>
-                  <Typography>Freelancer: {job.bid.freelancer}</Typography>
-                  <Typography>Bid Amount: ${job.bid.amount}</Typography>
-                  
-                  {/* Show deadline only if the file is not received */}
-                  {!job.fileReceived && (
-                    <Typography>Will receive by: {job.deadline}</Typography>
-                  )}
-                  
-                  {/* Show "View Received File" button if the file is received */}
-                  {job.fileReceived && !viewedFiles.includes(job.jobId) && (
-                    <Button 
-                      variant="outlined" 
-                      onClick={() => handleViewFile(job.jobId)} 
-                      sx={{ mt: 2, float: 'right' }}
-                    >
-                      View Received File
-                    </Button>
-                  )}
-
-                  {/* Show the name of the received file if it has been received */}
-                  {job.fileReceived && (
-                    <Typography variant="body1" sx={{ mt: 2, float: 'right' }}>
-                      Received File: {job.fileReceived}
-                    </Typography>
-                  )}
-
-                  {/* Show Accept & Release Payment and Submit Feedback buttons only if the file is viewed */}
-                  {viewedFiles.includes(job.jobId) && (
-                    <>
-                      <Button 
-                        variant="contained" 
-                        color="primary" 
-                        onClick={() => handleReleasePayment(job.jobId)} 
-                        sx={{ mt: 2, mr: 2 }}
-                      >
-                        Accept & Release Payment
-                      </Button>
-                      <Button 
-                        variant="outlined" 
-                        color="secondary" 
-                        onClick={() => handleSendForEdit(job.jobId)} 
-                        sx={{ mt: 2 }}
-                      >
-                        Submit Feedback & Send for Edit
-                      </Button>
-                    </>
-                  )}
-
-                  {/* Show "Sent for Edit" message with a different color */}
-                  {job.sentForEdit && (
-                    <Typography variant="body1" color="warning.main" sx={{ mt: 2 }}>
-                      Sent for Edit
-                    </Typography>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
+    <Box sx={{ maxWidth: 800, margin: 'auto', mt: 4 }}>
+      <Typography variant="h4" gutterBottom>Assigned Jobs</Typography>
+      {assignedJobs.map((job: Job) => (
+        <Card key={job.id} sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="h6">{job.sector}</Typography>
+            <Typography variant="body2" color="text.secondary">{job.details}</Typography>
+            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Chip label={job.status.replace('_', ' ')} color={getStatusColor(job.status)} />
+              {job.status === 'not_received' && timeLeft[job.id] && (
+                <Typography variant="body2">
+                  Deadline: {timeLeft[job.id].days}d {timeLeft[job.id].hours}h {timeLeft[job.id].minutes}m {timeLeft[job.id].seconds}s
+                </Typography>
+              )}
+            </Box>
+            {job.status === 'received' && (
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  startIcon={<CloudDownload />}
+                  onClick={() => handleViewFile(job)}
+                  variant="outlined"
+                  sx={{ mr: 1 }}
+                >
+                  View File
+                </Button>
+                <Button
+                  startIcon={<Check />}
+                  onClick={() => handleAcceptJob(job.id)}
+                  variant="contained"
+                  color="success"
+                  sx={{ mr: 1 }}
+                >
+                  Accept & Release Payment
+                </Button>
+                <Button
+                  startIcon={<Edit />}
+                  onClick={() => handleSendForEdit(job.id)}
+                  variant="contained"
+                  color="warning"
+                >
+                  Send for Edit
+                </Button>
+              </Box>
+            )}
+            {job.status === 'sent_for_edit' && (
+              <Typography variant="body2" sx={{ mt: 2, fontStyle: 'italic' }}>
+                Sent for edit
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>View File</DialogTitle>
+        <DialogContent>
+          {selectedJob && (
+            <iframe
+              src={selectedJob.fileUrl}
+              width="100%"
+              height="500px"
+              title="Job File"
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

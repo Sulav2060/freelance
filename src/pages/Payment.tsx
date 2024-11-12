@@ -14,10 +14,9 @@ import {
 } from "@mui/material";
 
 interface PaymentProps {
-  isFreelancer: boolean; // Determines if the view is for a freelancer or client
-}
+  userRole: 'freelancer' | 'client' | 'admin';}
 
-const Payment: React.FC<PaymentProps> = ({ isFreelancer }) => {
+const Payment: React.FC<PaymentProps> = ({ userRole }) => {
   // Freelancer-specific payment variables
   const workOngoingMoney = 1000;
   const moneyOnHold = 300;
@@ -48,10 +47,11 @@ const Payment: React.FC<PaymentProps> = ({ isFreelancer }) => {
   return (
     <Box sx={{ padding: 4 }}>
       <Typography variant="h4" gutterBottom>
-        {isFreelancer ? "Freelancer Payment Overview" : "Client Payment Overview"}
+      {userRole === 'freelancer' ? "Freelancer Payment Overview" : "Client Payment Overview"}
+   
       </Typography>
       <Grid container spacing={3}>
-        {isFreelancer ? (
+      {userRole === 'freelancer' ? (
           <>
             <Grid item xs={12} md={4}>
               <Card>
@@ -143,7 +143,7 @@ const Payment: React.FC<PaymentProps> = ({ isFreelancer }) => {
       </Grid>
 
       {/* Deposit Form */}
-      {showDepositForm && !isFreelancer && (
+      {showDepositForm && userRole === 'client' && (
         <Box sx={{ marginTop: 4 }}>
           <Typography variant="h5" gutterBottom>
             Deposit Credit

@@ -1,167 +1,143 @@
-import React, { useState } from "react";
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  Navigate,
-} from "react-router-dom";
-import { Button } from "@mui/material";
-import Sidebar from "./components/Sidebar.tsx";
-import Navbar from "./components/Navbar.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
-import WorkingOn from "./pages/WorkingOn.tsx";
-import WorkNow from "./pages/WorkNow.tsx";
-import SubmittedBids from "./pages/SubmittedBids.tsx";
-import History from "./pages/History.tsx";
-import Payment from "./pages/Payment.tsx";
-import Profile from "./pages/Profile.tsx";
-import JobDetails from "./pages/JobDetails.tsx";
-import Support from "./pages/Support.tsx";
-import PostJob from "./pages/PostJob.tsx";
-import PostedJobs from "./pages/PostedJobs.tsx";
-import JobBids from "./pages/JobBids.tsx";
-import AssignedJobs from "./pages/AssignedJobs.tsx";
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
+import { Select, MenuItem, FormControl, InputLabel } from "@mui/material";
+import { useSelector, useDispatch } from 'react-redux';
+import { acceptJob, addJob, clearSuccessMessage, setMode } from './store';
+import { RootState } from './store';
 
-const App: React.FC = () => {
-  const [isFreelancer, setIsFreelancer] = useState(true); // State to track mode
-  const [jobs, setJobs] = useState<any[]>([
-    { id: 1, sector: "Design", details: "Create a website", amount: 300 },
-    { id: 2, sector: "Writing", details: "Write SEO articles", amount: 500 },
-    {
-      id: 3,
-      sector: "Development",
-      details: "Build a mobile app",
-      amount: 800,
-    },
-  ]);
+import Sidebar from "./components/Sidebar";
+import Navbar from "./components/Navbar";
+import Dashboard from "./pages/Dashboard";
+import WorkingOn from "./pages/WorkingOn";
+import WorkNow from "./pages/WorkNow";
+import SubmittedBids from "./pages/SubmittedBids";
+import History from "./pages/History";
+import Payment from "./pages/Payment";
+import Profile from "./pages/Profile";
+import JobDetails from "./pages/JobDetails";
+import Support from "./pages/Support";
+import PostJob from "./pages/PostJob";
+import PostedJobs from "./pages/PostedJobs";
+import JobBids from "./pages/JobBids";
+import AssignedJobs from "./pages/AssignedJobs";
+import AdminAccountManagement from "./pages/admin/AccountManagement";
+import AdminJobOversight from "./pages/admin/JobOversight";
 
-  const [assignedJobs, setAssignedJobs] = useState<any[]>([]);
-  const [credit, setCredit] = useState(500);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null); // State for success message
-  const [redirectToAssignedJobs, setRedirectToAssignedJobs] = useState(false); // Redirect state
+const AppContent: React.FC = () => {
+  const dispatch = useDispatch();
+  const { pathname } = useLocation();
+  const { jobs, assignedJobs, credit, successMessage } = useSelector((state: RootState) => state);
+  const [userRole, setUserRole] = useState<'freelancer' | 'client' | 'admin'>('freelancer');
 
-  const handleSwitchMode = () => setIsFreelancer((prev) => !prev); // Toggle mode
-  const basePath = isFreelancer ? "/freelancer" : "/client"; // Determine the base path
+  useEffect(() => {
+    const role = pathname.startsWith('/client') 
+      ? 'client' 
+      : pathname.startsWith('/admin') 
+        ? 'admin' 
+        : 'freelancer';
+    setUserRole(role);
+    dispatch(setMode(role));
+  }, [pathname, dispatch]);
 
-  const handleAcceptJob = (job: any) => {
-    if (credit >= job.amount) {
-      setAssignedJobs((prevAssigned) => [...prevAssigned, job]); // Add job to assigned jobs
-      setJobs((prevJobs) => prevJobs.filter((j) => j.id !== job.id)); // Remove job from posted jobs
-      setCredit((prevCredit) => prevCredit - job.amount); // Deduct credit
-      setSuccessMessage(
-        `Accepted job ${job.id}. Credit deducted: $${job.amount}`
-      ); // Set success message
-          // navigate('/client/postedjobs');
+  const handleRoleChange = (event: React.ChangeEvent<{ value: unknown }>) => {
+    const role = event.target.value as 'freelancer' | 'client' | 'admin';
+    setUserRole(role);
+    dispatch(setMode(role));
+    const basePath = role === 'admin' ? '/admin' : role === 'client' ? '/client' : '/freelancer';
+    window.location.href = `${basePath}/dashboard`;
+  };
 
-    } else {
-      alert(`Insufficient credit to accept job ${job.id}.`);
-    }
+  const handleAcceptJob = (jobId: number) => {
+    dispatch(acceptJob(jobId));
   };
 
   const handlePostJob = (job: any) => {
-    setJobs((prevJobs) => [...prevJobs, job]);
+    dispatch(addJob(job));
   };
 
-  // Check for redirection
-  if (redirectToAssignedJobs) {
-    setRedirectToAssignedJobs(false); // Reset the flag after redirection
-    return (
-      <Navigate
-        to={`${basePath}/assignedjobs`}
-        state={{ message: successMessage }}
-      />
-    ); // Redirect to assigned jobs
-  }
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        dispatch(clearSuccessMessage());
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage, dispatch]);
+
+  const basePath = `/${userRole}`;
 
   return (
-    <Router>
-      <div style={{ display: "flex" }}>
-        <Sidebar isFreelancer={isFreelancer} />
-        <div style={{ flexGrow: 1 }}>
-          <Navbar isFreelancer={isFreelancer} credit={credit} />
-          <Button
-            onClick={handleSwitchMode}
-            variant="contained"
-            sx={{
-              padding: "8px 16px",
-              margin: "4px",
-              borderRadius: "999px",
-              display: "flex",
-              justifyContent: "flex-end",
-              marginLeft: "auto",
-            }}
+    <div style={{ display: "flex" }}>
+      <Sidebar userRole={userRole} />
+      <div style={{ flexGrow: 1 }}>
+        <Navbar userRole={userRole} credit={credit} />
+        <FormControl sx={{ m: 1, minWidth: 120 }}>
+          <InputLabel id="role-select-label">Role</InputLabel>
+          <Select
+            labelId="role-select-label"
+            value={userRole}
+            onChange={handleRoleChange}
+            label="Role"
           >
-            Switch to {isFreelancer ? "Client" : "Freelancer"}
-          </Button>
+            <MenuItem value="freelancer">Freelancer</MenuItem>
+            <MenuItem value="client">Client</MenuItem>
+            <MenuItem value="admin">Admin</MenuItem>
+          </Select>
+        </FormControl>
 
-          <Routes>
-            <Route
-              path="/"
-              element={<Navigate to={`${basePath}/dashboard`} />}
-            />
+        {successMessage && (
+          <div style={{ backgroundColor: '#4CAF50', color: 'white', padding: '10px', margin: '10px 0', borderRadius: '5px' }}>
+            {successMessage}
+          </div>
+        )}
 
-            {/* Freelancer Routes */}
-            <Route path="/freelancer/dashboard" element={<Dashboard />} />
-            <Route
-              path="/freelancer/payment"
-              element={<Payment isFreelancer={true} />}
-            />
-            <Route path="/freelancer/history" element={<History />} />
-            <Route path="/freelancer/profile" element={<Profile />} />
-            <Route path="/freelancer/workingon" element={<WorkingOn />} />
-            <Route path="/freelancer/worknow" element={<WorkNow />} />
-            <Route path="/freelancer/worknow/:id" element={<JobDetails />} />
-            <Route
-              path="/freelancer/submittedbids"
-              element={<SubmittedBids />}
-            />
-            <Route path="/freelancer/support" element={<Support />} />
+        <Routes>
+          <Route path="/" element={<Navigate to={`${basePath}/dashboard`} />} />
 
-            {/* Client Routes */}
-            <Route path="/client/dashboard" element={<Dashboard />} />
-            <Route
-              path="/client/postjob"
-              element={<PostJob onPost={handlePostJob} />}
-            />
-            <Route
-              path="/client/postedjobs"
-              element={
-                <PostedJobs
-                  jobs={jobs}
-                  onAccept={handleAcceptJob}
-                  credit={credit}
-                  setCredit={setCredit}
-                />
-              }
-            />
-            <Route
-              path="/client/assignedjobs"
-              element={
-                <AssignedJobs
-                  jobs={assignedJobs}
-                  successMessage={successMessage}
-                />
-              } // Pass the success message
-            />
-            <Route
-              path="/client/postedjobs/:jobId"
-              element={
-                <JobBids
-                  onAccept={handleAcceptJob}
-                  credit={credit}
-                  setCredit={setCredit}
-                />
-              }
-            />
-            <Route
-              path="/client/payment"
-              element={<Payment isFreelancer={false} />}
-            />
-            <Route path="/client/profile" element={<Profile />} />
-            <Route path="/client/support" element={<Support />} />
-          </Routes>
-        </div>
+          {/* Freelancer Routes */}
+          <Route path="/freelancer/dashboard" element={<Dashboard />} />
+          <Route path="/freelancer/payment" element={<Payment />} />
+          <Route path="/freelancer/history" element={<History />} />
+          <Route path="/freelancer/profile" element={<Profile />} />
+          <Route path="/freelancer/workingon" element={<WorkingOn />} />
+          <Route path="/freelancer/worknow" element={<WorkNow />} />
+          <Route path="/freelancer/worknow/:id" element={<JobDetails />} />
+          <Route path="/freelancer/submittedbids" element={<SubmittedBids />} />
+          <Route path="/freelancer/support" element={<Support />} />
+
+          {/* Client Routes */}
+          <Route path="/client/dashboard" element={<Dashboard />} />
+          <Route path="/client/postjob" element={<PostJob onPost={handlePostJob} />} />
+          <Route
+            path="/client/postedjobs"
+            element={<PostedJobs jobs={jobs} onAccept={handleAcceptJob} />}
+          />
+          <Route
+            path="/client/assignedjobs"
+            element={<AssignedJobs jobs={assignedJobs} />}
+          />
+          <Route
+            path="/client/postedjobs/:jobId"
+            element={<JobBids onAccept={handleAcceptJob} />}
+          />
+          <Route path="/client/payment" element={<Payment />} />
+          <Route path="/client/profile" element={<Profile />} />
+          <Route path="/client/support" element={<Support />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin/dashboard" element={<Dashboard />} />
+          <Route path="/admin/accountmanagement" element={<AdminAccountManagement />} />
+          <Route path="/admin/joboversight" element={<AdminJobOversight />} />
+        </Routes>
       </div>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 };

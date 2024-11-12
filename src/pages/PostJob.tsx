@@ -1,55 +1,94 @@
-import React, { useState } from 'react';
-import { Box, Button, TextField, MenuItem, Select, Typography } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, ChangeEvent } from 'react';
+import { useDispatch } from 'react-redux';
+import { addJob } from '../store';
+import { Button, Box, Typography, Input, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 
-const sectors = ['Writing', 'Charts', 'Other'];
+const sectors = [
+  'Web Development',
+  'Content Writing',
+  'Other'
+];
 
-const PostJob: React.FC<{ onPost: (job: any) => void }> = ({ onPost }) => {
+const PostJob: React.FC = () => {
+  const dispatch = useDispatch();
   const [sector, setSector] = useState('');
-  const [details, setDetails] = useState('');
-  const [files, setFiles] = useState<FileList | null>(null);
-  const navigate = useNavigate();
+  const [file, setFile] = useState<File | null>(null);
 
-  const handlePost = () => {
-    if (!sector) return alert('Select a sector!');
-    
-    onPost({ id: Date.now(), sector, details, files: files ? Array.from(files) : [] });
-    navigate('/client/postedjobs');
+  const handleSectorChange = (event: ChangeEvent<{ value: unknown }>) => {
+    setSector(event.target.value as string);
+  };
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setFile(event.target.files[0]);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (file && sector) {
+      // In a real application, you would upload the file to a server here
+      // For now, we'll just use the file name as the job details
+      dispatch(addJob({ id: Date.now(), sector, details: file.name }));
+      setSector('');
+      setFile(null);
+    } else {
+      alert('Please select a sector and upload a file with job details');
+    }
   };
 
   return (
-    <Box sx={{ padding: 4, maxWidth: 400, margin: 'auto' }}>
-      <Typography variant="h5" align="center" gutterBottom>Post a Job</Typography>
-
-      <Select fullWidth value={sector} onChange={(e) => setSector(e.target.value)} displayEmpty>
-        <MenuItem value="" disabled>Select Sector</MenuItem>
-        {sectors.map((option) => <MenuItem key={option} value={option}>{option}</MenuItem>)}
-      </Select>
-
-      {sector === 'Other' && (
-        <TextField 
+    <Box sx={{ maxWidth: 400, margin: 'auto', mt: 4 }}>
+      <Typography variant="h4" gutterBottom>Post a New Job</Typography>
+      <form onSubmit={handleSubmit}>
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="sector-label">Sector</InputLabel>
+          <Select
+            labelId="sector-label"
+            value={sector}
+            onChange={handleSectorChange}
+            label="Sector"
+          >
+            {sectors.map((s) => (
+              <MenuItem key={s} value={s}>{s}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Box sx={{ mt: 2, mb: 2 }}>
+          <Input
+            type="file"
+            onChange={handleFileChange}
+            sx={{ display: 'none' }}
+            id="file-upload"
+          />
+          <label htmlFor="file-upload">
+            <Button
+              variant="contained"
+              component="span"
+              startIcon={<CloudUploadIcon />}
+              fullWidth
+            >
+              Upload Job Details
+            </Button>
+          </label>
+          {file && (
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Selected file: {file.name}
+            </Typography>
+          )}
+        </Box>
+        <Button 
+          type="submit" 
+          variant="contained" 
+          color="primary" 
           fullWidth 
-          label="Explain Task" 
-          value={details} 
-          onChange={(e) => setDetails(e.target.value)} 
-          margin="normal"
-        />
-      )}
-
-      <Button fullWidth variant="outlined" component="label" sx={{ mt: 2 }}>
-        Upload Files
-        <input type="file" hidden multiple onChange={(e) => setFiles(e.target.files)} />
-      </Button>
-
-      <Button 
-        fullWidth 
-        variant="contained" 
-        color="primary" 
-        sx={{ mt: 2 }} 
-        onClick={handlePost}
-      >
-        Post Job
-      </Button>
+          sx={{ mt: 2 }}
+          disabled={!sector || !file}
+        >
+          Post Job
+        </Button>
+      </form>
     </Box>
   );
 };
